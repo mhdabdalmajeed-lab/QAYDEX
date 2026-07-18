@@ -60,11 +60,14 @@ function DropdownMenuLabel({
   className,
   inset,
   ...props
-}: MenuPrimitive.GroupLabel.Props & {
+}: React.ComponentProps<"div"> & {
   inset?: boolean
 }) {
+  // A plain div, not MenuPrimitive.GroupLabel: GroupLabel throws unless it is inside a
+  // Menu.Group, but we use this as a standalone section header ("Workspaces", the signed-in
+  // email) that labels nothing in particular. A div carries the styling without the coupling.
   return (
-    <MenuPrimitive.GroupLabel
+    <div
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
