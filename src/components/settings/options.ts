@@ -41,7 +41,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "audits.view": "Open audits and read their findings",
   "audits.create": "Create audits",
   "audits.run": "Run an audit against the model",
-  "audits.edit": "Edit audit details, inputs and instructions",
+  "audits.edit": "Edit audit details and evidence",
   "audits.review": "Review an audit and record review notes",
   "audits.approve": "Approve a completed audit",
   "audits.delete": "Delete audits",
@@ -50,8 +50,6 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "findings.assign": "Assign findings to a member",
   "findings.respond": "Add management responses to findings",
   "comments.create": "Comment on findings and audits",
-  "instructions.manage": "Create and edit the instruction library",
-  "templates.manage": "Create and edit audit templates",
   "integrations.manage": "Connect and configure integrations",
   "chat.use": "Use AI chat",
   "activity.view": "Read the workspace audit trail",
@@ -81,8 +79,6 @@ export const PERMISSION_GROUPS: { title: string; permissions: Permission[] }[] =
   {
     title: "Library and output",
     permissions: [
-      "instructions.manage",
-      "templates.manage",
       "integrations.manage",
       "audits.export",
       "audits.share",

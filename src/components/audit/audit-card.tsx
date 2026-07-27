@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   RiBuilding2Line,
   RiCalendarLine,
-  RiFileCopyLine,
   RiFlagLine,
   RiTimeLine,
   RiUserLine,
@@ -30,7 +29,6 @@ export type AuditCardData = {
   reviewerEmail: string | null;
   updatedAt: Date;
   status: AuditStatus;
-  templateName: string | null;
 };
 
 const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
@@ -106,11 +104,6 @@ export function AuditCard({ audit, slug }: { audit: AuditCardData; slug: string 
         </dl>
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground sm:grid-cols-3">
-          <Fact
-            icon={RiFileCopyLine}
-            label="Template"
-            value={audit.templateName ?? "No template"}
-          />
           <Fact icon={RiBuilding2Line} label="Entity or client" value={owner ?? "Not assigned"} />
           <Fact icon={RiCalendarLine} label="Period" value={period ?? "No period"} />
           <Fact

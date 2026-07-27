@@ -193,7 +193,6 @@ export default async function ChatListPage({
     <>
       <PageHeader
         title="AI Chat"
-        description="Conversations grounded in your audits. Every answer is computed from the evidence attached to the audit it cites."
         actions={
           canChat ? (
             <Button render={<Link href={`/w/${slug}/chat/new`} />}>

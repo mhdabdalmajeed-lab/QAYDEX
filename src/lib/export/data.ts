@@ -18,8 +18,6 @@ import {
   findings,
   inputDocuments,
   outputBlocks,
-  templateVersions,
-  templates,
   workspaces,
 } from "@/db/schema";
 import type { EvidenceLocator } from "@/db/schema";
@@ -196,15 +194,6 @@ export async function loadExportPayload(args: LoadExportPayloadArgs): Promise<Ex
         .select({ email: authUsers.email })
         .from(authUsers)
         .where(eq(authUsers.id, revision.approvedBy))
-        .limit(1)
-    : [];
-
-  const [templateRow] = revision.templateVersionId
-    ? await db
-        .select({ name: templates.name, version: templateVersions.version })
-        .from(templateVersions)
-        .leftJoin(templates, eq(templates.id, templateVersions.templateId))
-        .where(eq(templateVersions.id, revision.templateVersionId))
         .limit(1)
     : [];
 
@@ -524,8 +513,6 @@ export async function loadExportPayload(args: LoadExportPayloadArgs): Promise<Ex
       modelId: revision.modelId,
       promptVersion: revision.promptVersion,
       schemaVersion: revision.schemaVersion,
-      templateName: templateRow?.name ?? null,
-      templateVersion: templateRow?.version ?? null,
       revisionNumber: revision.revision,
       revisionStatus: revision.status,
       generatedAt: (revision.completedAt ?? revision.createdAt).toISOString(),

@@ -1,3 +1,4 @@
+import { PageHeaderSkeleton } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ChatListLoading() {
@@ -5,10 +6,7 @@ export default function ChatListLoading() {
     <div className="flex flex-1 flex-col" aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading conversations…</span>
 
-      <div className="flex flex-col gap-3 border-b border-border px-4 py-4 md:px-6">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-4 w-96 max-w-full" />
-      </div>
+      <PageHeaderSkeleton />
 
       <div className="px-4 py-5 md:px-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

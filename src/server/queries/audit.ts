@@ -19,8 +19,6 @@ import {
   evidenceRefs,
   findings,
   inputDocuments,
-  templateVersions,
-  templates,
   workspaceMembers,
   workspaces,
 } from "@/db/schema";
@@ -77,17 +75,10 @@ export const getAuditContext = cache(async (slug: string, auditId: string) => {
       audit: audits,
       entityName: entities.legalName,
       clientName: clients.name,
-      templateName: templates.name,
-      templateSlug: templates.slug,
-      templateVersion: templateVersions.version,
-      recommendedInputs: templateVersions.recommendedInputs,
-      requiredEvidence: templateVersions.requiredEvidence,
     })
     .from(audits)
     .leftJoin(entities, eq(entities.id, audits.entityId))
     .leftJoin(clients, eq(clients.id, audits.clientId))
-    .leftJoin(templates, eq(templates.id, audits.templateId))
-    .leftJoin(templateVersions, eq(templateVersions.id, audits.templateVersionId))
     .where(and(eq(audits.id, auditId), eq(audits.workspaceId, workspace.id)))
     .limit(1);
   if (!row) notFound();
@@ -99,11 +90,8 @@ export const getAuditContext = cache(async (slug: string, auditId: string) => {
     audit: row.audit,
     entityName: row.entityName,
     clientName: row.clientName,
-    templateName: row.templateName,
-    templateSlug: row.templateSlug,
-    templateVersion: row.templateVersion,
-    recommendedInputs: row.recommendedInputs ?? [],
-    requiredEvidence: row.requiredEvidence ?? [],
+    recommendedInputs: [] as { name: string; description: string; formats: string[]; required: boolean }[],
+    requiredEvidence: [] as string[],
     can: (permission: Permission) => roleHas(membership.role, permission),
   };
 });

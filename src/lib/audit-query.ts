@@ -2,7 +2,6 @@ import "server-only";
 
 import {
   and,
-  arrayOverlaps,
   count,
   desc,
   eq,
@@ -27,22 +26,20 @@ import {
   findings,
   integrationConnections,
   integrationImports,
-  templates,
 } from "@/db/schema";
 import {
   firstParam,
   isAuditStatus,
   isRiskLevel,
   type AuditStatus,
-  type DomainFilter,
 } from "@/lib/audit-filters";
 import type { AuditDomain } from "@/lib/ai/blocks/types";
 
 /**
  * The audit library query (PRD §20), shared by `/audits` and by every domain library.
  *
- * A domain page is the same query with `domain` pinned and an optional template-tag
- * filter applied — the pages differ in framing, not in what they read. Nothing here can
+ * A domain page is the same query with `domain` pinned — the pages differ in framing, not
+ * in what they read. Nothing here can
  * reach outside a workspace: `workspaceId` is a mandatory argument and is applied to the
  * audits table and to every correlated subquery, because drizzle bypasses RLS.
  */
@@ -51,7 +48,6 @@ export type AuditQueryParams = Record<string, string | string[] | undefined>;
 
 export type ParsedFilters = {
   domain?: AuditDomain;
-  templateId?: string;
   entityId?: string;
   clientId?: string;
   period?: string;
@@ -98,7 +94,6 @@ export function parseFilters(params: AuditQueryParams): ParsedFilters {
 
   return {
     domain: domain && DOMAIN_VALUES.includes(domain) ? (domain as AuditDomain) : undefined,
-    templateId: uuidParam(params.template),
     entityId: uuidParam(params.entity),
     clientId: uuidParam(params.client),
     period: firstParam(params.period),
@@ -173,8 +168,6 @@ export type BuildOptions = {
   filters: ParsedFilters;
   /** Pins the domain regardless of `filters.domain` — used by the domain libraries. */
   domain?: AuditDomain;
-  /** A domain sub-library (`?filter=`), matched through the audit's template tags. */
-  subFilter?: DomainFilter | null;
   /**
    * Status handled by the tabs. `"all"` hides archived audits — archive is its own tab,
    * not part of the working set.
@@ -186,7 +179,6 @@ export async function buildAuditConditions({
   workspaceId,
   filters,
   domain,
-  subFilter,
   tab,
 }: BuildOptions): Promise<SQL[]> {
   // The tenant predicate is first and unconditional. Nothing below may remove it.
@@ -194,10 +186,6 @@ export async function buildAuditConditions({
 
   const pinnedDomain = domain ?? filters.domain;
   if (pinnedDomain) conditions.push(eq(audits.domain, pinnedDomain));
-
-  if (subFilter && subFilter.tags.length > 0) {
-    conditions.push(arrayOverlaps(templates.tags, subFilter.tags));
-  }
 
   // Omitting `tab` *and* `filters.status` deliberately applies no status predicate at all,
   // which is what the tab counts need: they must be able to count archived audits too.
@@ -208,7 +196,6 @@ export async function buildAuditConditions({
     conditions.push(ne(audits.status, "archived"));
   }
 
-  if (filters.templateId) conditions.push(eq(audits.templateId, filters.templateId));
   if (filters.entityId) conditions.push(eq(audits.entityId, filters.entityId));
   if (filters.clientId) conditions.push(eq(audits.clientId, filters.clientId));
   if (filters.period) conditions.push(eq(audits.periodLabel, filters.period));
@@ -283,14 +270,12 @@ export type AuditRow = {
   updatedAt: Date;
   createdAt: Date;
   completedAt: Date | null;
-  templateName: string | null;
   entityName: string | null;
   clientName: string | null;
 };
 
 /**
- * The three left joins are what make the filter set expressible in one query: the template
- * join carries the tag vocabulary the domain sub-filters match on, and the revision join
+ * The left joins are what make the filter set expressible in one query; the revision join
  * carries "date completed", which lives on the revision rather than the audit.
  */
 function baseSelect() {
@@ -311,12 +296,10 @@ function baseSelect() {
       updatedAt: audits.updatedAt,
       createdAt: audits.createdAt,
       completedAt: currentRevision.completedAt,
-      templateName: templates.name,
       entityName: entities.legalName,
       clientName: clients.name,
     })
     .from(audits)
-    .leftJoin(templates, eq(templates.id, audits.templateId))
     .leftJoin(entities, eq(entities.id, audits.entityId))
     .leftJoin(clients, eq(clients.id, audits.clientId))
     .leftJoin(currentRevision, eq(currentRevision.id, audits.currentRevisionId));
@@ -338,7 +321,6 @@ export async function countAudits(conditions: SQL[]): Promise<number> {
   const [row] = await db
     .select({ total: count() })
     .from(audits)
-    .leftJoin(templates, eq(templates.id, audits.templateId))
     .leftJoin(currentRevision, eq(currentRevision.id, audits.currentRevisionId))
     .where(and(...conditions));
   return row?.total ?? 0;
@@ -351,7 +333,6 @@ export async function countByStatus(
   const rows = await db
     .select({ status: audits.status, total: count() })
     .from(audits)
-    .leftJoin(templates, eq(templates.id, audits.templateId))
     .leftJoin(currentRevision, eq(currentRevision.id, audits.currentRevisionId))
     .where(and(...conditions))
     .groupBy(audits.status);

@@ -171,7 +171,6 @@ export default async function ModelsSettingsPage({ params, searchParams }: Props
           { label: "Approved models" },
         ]}
         title="Approved models"
-        description="Which models this workspace's audits may run on, and which one they use by default."
       />
 
       <main className="flex flex-1 flex-col gap-5 px-4 py-5 md:px-6">

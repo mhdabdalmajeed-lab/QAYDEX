@@ -2,6 +2,7 @@ import "server-only";
 
 import OpenAI from "openai";
 import type { ZodType } from "zod";
+import type { z } from "zod";
 
 import { db } from "@/db";
 import { modelCalls } from "@/db/schema";
@@ -107,6 +108,48 @@ async function record(
 
 export { sanitizeJsonSchema, toStrictJsonSchema } from "@/lib/ai/json-schema";
 
+/**
+ * Fills in keys the model left out of a nullable field.
+ *
+ * Strict `json_schema` is supposed to make every key mandatory, and for a plain object it
+ * does — but a discriminated union reaches the API as `anyOf`, and inside a matched variant
+ * the validator stops enforcing `required`. The model then drops the occasional nullable key
+ * and a 40-second generation dies on `expected string, received undefined`.
+ *
+ * Only that exact issue is repaired, and only by writing `null` at the path zod named: a
+ * missing value becomes an absent value, never an invented one. Anything else — a wrong type,
+ * a bad enum, a missing *non*-nullable field — still fails the parse.
+ */
+function fillMissingKeys(value: unknown, issues: readonly z.core.$ZodIssue[]): unknown {
+  let filled = 0;
+
+  for (const issue of issues) {
+    if (issue.code !== "invalid_type" || issue.path.length === 0) return null;
+
+    // Walk to the object that should hold the key. `issue.input` is not reliably populated,
+    // so absence is decided against the payload itself.
+    let cursor: unknown = value;
+    for (const step of issue.path.slice(0, -1)) {
+      if (typeof cursor !== "object" || cursor === null) break;
+      cursor = (cursor as Record<string | number, unknown>)[step as string | number];
+    }
+
+    const leaf = issue.path[issue.path.length - 1];
+    if (typeof cursor !== "object" || cursor === null) return null;
+    if (typeof leaf !== "string" && typeof leaf !== "number") return null;
+
+    // Present but wrong is a real disagreement with the schema, not an omission: leave it
+    // alone and let the parse fail.
+    const holder = cursor as Record<string | number, unknown>;
+    if (holder[leaf] !== undefined) return null;
+
+    holder[leaf] = null;
+    filled += 1;
+  }
+
+  return filled > 0 ? value : null;
+}
+
 /** The output array holds several item shapes; only some carry text content. */
 function contentParts(response: OpenAI.Responses.Response): unknown[] {
   const parts: unknown[] = [];
@@ -172,7 +215,22 @@ export async function generateStructured<T>(options: GenerateOptions<T>): Promis
       );
     }
 
-    const parsed = options.schema.parse(JSON.parse(text));
+    const payload: unknown = JSON.parse(text);
+    let result = options.schema.safeParse(payload);
+    if (!result.success) {
+      const repaired = fillMissingKeys(payload, result.error.issues);
+      if (repaired !== null) {
+        const retried = options.schema.safeParse(repaired);
+        if (retried.success) {
+          console.warn(
+            `[ai] ${options.schemaName}: filled ${result.error.issues.length} omitted nullable key(s)`,
+          );
+          result = retried;
+        }
+      }
+    }
+    if (!result.success) throw result.error;
+    const parsed = result.data;
 
     await record(options.context, modelId, {
       requestSummary: { schemaName: options.schemaName, effort: options.effort ?? "medium" },

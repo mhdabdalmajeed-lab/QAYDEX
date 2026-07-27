@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { db } from "@/db";
 import { workspaces } from "@/db/schema";
 import { AccessDenied, listWorkspaces, requireMember, requireUser } from "@/lib/auth/guards";
@@ -59,13 +59,12 @@ export default async function WorkspaceLayout({
           type: membership.type,
         }))}
       />
+      {/*
+        No bar of its own above the page: the sidebar toggle lives in `PageHeader`, next to
+        the page title, so the shell contributes one row of chrome instead of two. The
+        workspace name is already the first thing in the sidebar and does not need repeating.
+      */}
       <SidebarInset>
-        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-          <SidebarTrigger />
-          <span className="truncate text-sm font-medium text-muted-foreground">
-            {workspace.name}
-          </span>
-        </div>
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </SidebarInset>
     </SidebarProvider>

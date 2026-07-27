@@ -58,15 +58,18 @@ export function RunButton({
         </Field>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Only the reason a run is *not* possible is worth saying; describing what a run does
+          is not news to anyone who got this far. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {blockedReason ? (
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {blockedReason}
+          </p>
+        ) : null}
         <Button type="submit" disabled={pending || blockedReason !== null}>
           {pending ? <Spinner aria-hidden="true" /> : <RiPlayLine aria-hidden="true" />}
           {pending ? "Starting…" : hasRevisions ? "Run again" : "Run audit"}
         </Button>
-        <p className="text-xs text-muted-foreground" aria-live="polite">
-          {blockedReason ??
-            "The model reads the instruction hierarchy, plans the audit, analyses your evidence, links every finding to it, then reviews its own work."}
-        </p>
       </div>
     </form>
   );

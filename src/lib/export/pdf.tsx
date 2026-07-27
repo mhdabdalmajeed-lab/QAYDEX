@@ -399,7 +399,6 @@ function Cover({ payload, kindLabel }: { payload: ExportPayload; kindLabel: stri
     ...(client ? ([["Client", client.name]] as [string, string][]) : []),
     ["Period", audit.periodLabel ?? [audit.periodStart, audit.periodEnd].filter(Boolean).join(" to ") ?? "Not specified"],
     ["Entity", audit.entityName ?? "Not specified"],
-    ["Template", provenance.templateName ? `${provenance.templateName} v${provenance.templateVersion ?? 1}` : "None"],
     ["Overall risk", audit.overallRisk ? RISK_LABEL[audit.overallRisk] : "Not assessed"],
     ["Revision", `${provenance.revisionNumber} (${provenance.revisionStatus})`],
     ["Generated", fmtDateTime(provenance.generatedAt)],

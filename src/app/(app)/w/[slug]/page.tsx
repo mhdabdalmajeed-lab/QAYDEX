@@ -9,6 +9,7 @@ import {
   RiSearchEyeLine,
 } from "@remixicon/react";
 
+import { NewAuditDialog } from "@/components/audit/new-audit-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -152,17 +153,18 @@ export default async function WorkspaceHomePage({ params }: Params) {
     <>
       <PageHeader
         title="Overview"
-        description={`Audit activity across ${workspace.name}.`}
         actions={
           <>
             <Button render={<Link href={`/w/${slug}/chat/new`} />} variant="outline">
               <RiChat3Line aria-hidden="true" />
               New chat
             </Button>
-            <Button render={<Link href={`/w/${slug}/audits/new`} />}>
-              <RiAddLine aria-hidden="true" />
-              New audit
-            </Button>
+            <NewAuditDialog workspaceSlug={slug}>
+              <Button>
+                <RiAddLine aria-hidden="true" />
+                New audit
+              </Button>
+            </NewAuditDialog>
           </>
         }
       />
@@ -176,25 +178,19 @@ export default async function WorkspaceHomePage({ params }: Params) {
               </EmptyMedia>
               <EmptyTitle>No audits yet</EmptyTitle>
               <EmptyDescription>
-                An audit is the unit of work here: you pick a template, add the instructions
+                An audit is the unit of work here: you write the instructions
                 that describe how your organization audits, attach the evidence, and the
                 model produces evidence-linked findings. Everything you upload stays inside
                 the audit it was uploaded for.
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button render={<Link href={`/w/${slug}/audits/new`} />}>
-                <RiAddLine aria-hidden="true" />
-                Create your first audit
-              </Button>
-              <Button render={<Link href={`/w/${slug}/templates`} />} variant="outline">
-                Browse the template library
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Not sure where to start? Write your{" "}
-                <Link href={`/w/${slug}/instructions/new`}>audit instructions</Link> first —
-                every audit you run afterwards will follow them.
-              </p>
+              <NewAuditDialog workspaceSlug={slug}>
+                <Button>
+                  <RiAddLine aria-hidden="true" />
+                  Create your first audit
+                </Button>
+              </NewAuditDialog>
             </EmptyContent>
           </Empty>
         ) : (
@@ -204,11 +200,12 @@ export default async function WorkspaceHomePage({ params }: Params) {
                 Audits by status
               </h2>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+                {/* Counts, not links: audits are read from their domain library now, and
+                    there is no unfiltered list left to send a status to. */}
                 {HEADLINE_STATUSES.map((status) => (
-                  <Link
+                  <div
                     key={status}
-                    href={`/w/${slug}/audits?status=${status}`}
-                    className="rounded-lg border border-border bg-card p-3 transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="rounded-lg border border-border bg-card p-3"
                   >
                     <div className="text-2xl font-semibold tabular-nums">
                       {byStatus.get(status) ?? 0}
@@ -216,7 +213,7 @@ export default async function WorkspaceHomePage({ params }: Params) {
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {STATUS_LABEL[status]}
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </section>

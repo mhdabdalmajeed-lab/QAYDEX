@@ -1,7 +1,7 @@
 /**
  * End-to-end smoke test for the audit engine.
  *
- * Builds a real workspace, a real audit from a seeded template, real parsed evidence (a
+ * Builds a real workspace, a real audit, real parsed evidence (a
  * general ledger spreadsheet with deliberate anomalies), then runs the full nine-stage
  * pipeline against the live model and asserts the things the PRD actually promises:
  * evidence-linked findings, resolvable citations, a quality-review pass, and an immutable
@@ -12,7 +12,7 @@
  * It spends real tokens. It is a test of the engine, not of the model's opinions — it asserts
  * structure and traceability, never that a specific finding was found.
  */
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as XLSX from "xlsx";
 
 import { db } from "@/db";
@@ -27,8 +27,6 @@ import {
   inputDocuments,
   modelCalls,
   outputBlocks,
-  templateVersions,
-  templates,
   workspaceMembers,
   workspaces,
 } from "@/db/schema";
@@ -147,7 +145,6 @@ async function main() {
 
   // Reuse a real auth user; the FK to auth.users is enforced.
   const [{ id: userId, email }] = await db.execute<{ id: string; email: string }>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (await import("drizzle-orm")).sql`select id::text, email from auth.users order by created_at limit 1`,
   ) as unknown as { id: string; email: string }[];
 
@@ -156,36 +153,15 @@ async function main() {
   const workspace = await ensureWorkspace(userId);
   console.log(`▸ Workspace ${workspace.slug} (${workspace.id})`);
 
-  const [template] = await db
-    .select()
-    .from(templates)
-    .where(eq(templates.slug, "general-ledger-audit"))
-    .limit(1);
-  if (!template) throw new Error("Seed the templates first: pnpm db:seed");
-
-  const [version] = await db
-    .select()
-    .from(templateVersions)
-    .where(
-      and(
-        eq(templateVersions.templateId, template.id),
-        eq(templateVersions.version, template.currentVersion),
-      ),
-    )
-    .limit(1);
-
-  console.log(`▸ Template "${template.name}" v${version.version}`);
-
   // A fresh audit each run keeps the assertions honest.
   const [audit] = await db
     .insert(audits)
     .values({
       workspaceId: workspace.id,
       name: `Q1 2026 general ledger audit (smoke ${new Date().toISOString().slice(11, 19)})`,
-      objective: version.auditDescription,
+      objective:
+        "Establish whether the general ledger for the period is complete, correctly classified, and supported.",
       domain: "ledger",
-      templateId: template.id,
-      templateVersionId: version.id,
       periodStart: "2026-01-01",
       periodEnd: "2026-03-31",
       periodLabel: "Q1 2026",

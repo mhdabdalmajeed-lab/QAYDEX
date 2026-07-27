@@ -277,13 +277,6 @@ export default async function ActivityPage({ params, searchParams }: Props) {
           { label: "Audit trail" },
         ]}
         title="Audit trail"
-        description={
-          <>
-            Every action recorded in this workspace, newest first — who did it, what it
-            touched, and the model and prompt version behind it. Entries are written by the
-            server as work happens and are never edited or deleted from here.
-          </>
-        }
       />
 
       {/* A GET form, not a live filter: the resulting URL is the shareable record. */}

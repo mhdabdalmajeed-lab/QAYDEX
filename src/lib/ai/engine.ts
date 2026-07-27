@@ -31,6 +31,11 @@ import type {
 import { auditBlockSchema, type AuditBlock } from "@/lib/ai/blocks/schemas";
 import { generateStructured, openai } from "@/lib/ai/client";
 import { renderInstructions, resolveInstructions } from "@/lib/ai/instructions";
+import {
+  describeSkippedImages,
+  imageContentParts,
+  loadImageEvidence,
+} from "@/lib/ai/vision";
 import { BLOCK_SCHEMA_VERSION, FALLBACK_MODEL_ID, PROMPT_VERSION } from "@/lib/ai/models";
 import {
   auditContextBlock,
@@ -366,11 +371,21 @@ const RUNNERS: Record<Stage, StageRunner> = {
       .limit(1);
     const plan = (ctx.memo.plan as AuditPlan | undefined) ?? revision?.plan ?? null;
 
+    // Images carry no rows for the tools to return, so they travel in the message itself.
+    const imageEvidence = await loadImageEvidence(ctx.auditId);
+    ctx.memo.imageCount = imageEvidence.images.length;
+
     const toolRecords: ToolCallRecord[] = [];
     const history: OpenAI.Responses.ResponseInput = [
       {
         role: "user",
-        content: `${renderAuditHeader(auditCtx)}\n\n## Instructions (highest authority first)\n\n${renderInstructions(instructionSet)}\n\n${manifest}\n\n## Your plan\n\n${JSON.stringify(plan, null, 2)}\n\nInvestigate now. Use the tools — they are your only access to the evidence.`,
+        content: [
+          {
+            type: "input_text",
+            text: `${renderAuditHeader(auditCtx)}\n\n## Instructions (highest authority first)\n\n${renderInstructions(instructionSet)}\n\n${manifest}${describeSkippedImages(imageEvidence)}\n\n## Your plan\n\n${JSON.stringify(plan, null, 2)}\n\nInvestigate now. Use the tools for everything except the images below — the tools are your only access to the rest of the evidence.`,
+          },
+          ...imageContentParts(imageEvidence),
+        ],
       },
     ];
 
@@ -880,7 +895,6 @@ export async function queueAuditRun(params: {
         auditId: params.auditId,
         revision: next,
         status: "processing",
-        templateVersionId: audit.templateVersionId,
         createdBy: params.userId,
         reason: params.reason ?? null,
       })

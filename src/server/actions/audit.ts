@@ -1,31 +1,28 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { db } from "@/db";
+import type { PreviousAuditOption } from "@/components/audit/new-audit-form";
 import {
   auditInputs,
-  auditInstructionLinks,
   auditRevisions,
   audits,
   blockStates,
+  clients,
   comments,
+  entities,
   findingStates,
   findings,
-  instructionVersions,
-  instructions,
-  templateVersions,
-  templates,
   workspaces,
 } from "@/db/schema";
 import { queueAuditRun } from "@/lib/ai/engine";
-import { detectInstructionConflicts, resolveInstructions } from "@/lib/ai/instructions";
 import { logActivity } from "@/lib/activity";
-import { requireCanRunAudit, requirePermission } from "@/lib/auth/guards";
+import { requireCanRunAudit, requireMember, requirePermission, roleHas } from "@/lib/auth/guards";
 import { startJob } from "@/lib/jobs/runner";
 
 /**
@@ -53,7 +50,6 @@ async function loadAudit(auditId: string, permission: Parameters<typeof requireP
 const createSchema = z.object({
   workspaceSlug: z.string().min(1),
   name: z.string().min(1, "Give the audit a name.").max(200),
-  templateSlug: z.string().nullable(),
   domain: z.enum(["general", "ledger", "budgets", "cash", "customers", "suppliers"]),
   objective: z.string().max(4000).nullable(),
   scope: z.string().max(4000).nullable(),
@@ -74,7 +70,6 @@ export async function createAudit(
   const raw = {
     workspaceSlug: String(formData.get("workspaceSlug") ?? ""),
     name: String(formData.get("name") ?? "").trim(),
-    templateSlug: (formData.get("templateSlug") as string) || null,
     domain: (formData.get("domain") as string) || "general",
     objective: (formData.get("objective") as string) || null,
     scope: (formData.get("scope") as string) || null,
@@ -95,37 +90,8 @@ export async function createAudit(
   const workspace = await workspaceBySlug(input.workspaceSlug);
   const { user } = await requirePermission(workspace.id, "audits.create");
 
-  let templateId: string | null = null;
-  let templateVersionId: string | null = null;
-  let domain = input.domain;
-  let objective = input.objective;
-
-  if (input.templateSlug) {
-    const [template] = await db
-      .select()
-      .from(templates)
-      .where(eq(templates.slug, input.templateSlug))
-      .limit(1);
-    if (!template) return { error: "That template no longer exists." };
-
-    const [version] = await db
-      .select()
-      .from(templateVersions)
-      .where(
-        and(
-          eq(templateVersions.templateId, template.id),
-          eq(templateVersions.version, template.currentVersion),
-        ),
-      )
-      .limit(1);
-
-    templateId = template.id;
-    // Pinning the version, not the template, is what keeps the audit reproducible when the
-    // template is edited later (PRD §23).
-    templateVersionId = version?.id ?? null;
-    domain = template.category;
-    objective = objective ?? version?.auditDescription ?? null;
-  }
+  const domain = input.domain;
+  const objective = input.objective;
 
   const auditId = await db.transaction(async (tx) => {
     const [audit] = await tx
@@ -136,8 +102,6 @@ export async function createAudit(
         objective,
         scope: input.scope,
         domain,
-        templateId,
-        templateVersionId,
         entityId: input.entityId,
         clientId: input.clientId,
         periodStart: input.periodStart,
@@ -163,21 +127,6 @@ export async function createAudit(
           .set({ customInstructions: source.customInstructions })
           .where(eq(audits.id, audit.id));
 
-        const links = await tx
-          .select()
-          .from(auditInstructionLinks)
-          .where(eq(auditInstructionLinks.auditId, source.id));
-
-        for (const link of links) {
-          await tx.insert(auditInstructionLinks).values({
-            workspaceId: workspace.id,
-            auditId: audit.id,
-            instructionId: link.instructionId,
-            instructionVersionId: link.instructionVersionId,
-            source: link.source,
-            addedBy: user.id,
-          });
-        }
       }
     }
 
@@ -190,10 +139,12 @@ export async function createAudit(
     targetType: "audit",
     targetId: auditId,
     auditId,
-    metadata: { name: input.name, templateSlug: input.templateSlug, domain },
+    metadata: { name: input.name, domain },
   });
 
-  redirect(`/w/${input.workspaceSlug}/audits/${auditId}/edit`);
+  // No redirect: the dialog stays open on its evidence step, which needs the id it just
+  // created. Navigation happens when the run starts, not when the record exists.
+  return { auditId };
 }
 
 export async function updateAuditDetails(formData: FormData) {
@@ -228,92 +179,6 @@ export async function updateAuditDetails(formData: FormData) {
   revalidatePath(`/w/[slug]/audits/${auditId}`, "page");
 }
 
-export async function toggleInstruction(formData: FormData) {
-  const auditId = String(formData.get("auditId"));
-  const instructionId = String(formData.get("instructionId"));
-  const { audit, user } = await loadAudit(auditId, "audits.edit");
-
-  const [existing] = await db
-    .select()
-    .from(auditInstructionLinks)
-    .where(
-      and(
-        eq(auditInstructionLinks.auditId, auditId),
-        eq(auditInstructionLinks.instructionId, instructionId),
-      ),
-    )
-    .limit(1);
-
-  if (existing) {
-    await db.delete(auditInstructionLinks).where(eq(auditInstructionLinks.id, existing.id));
-  } else {
-    const [instruction] = await db
-      .select()
-      .from(instructions)
-      .where(
-        and(eq(instructions.id, instructionId), eq(instructions.workspaceId, audit.workspaceId)),
-      )
-      .limit(1);
-    if (!instruction) throw new Error("Instruction not found.");
-
-    const [version] = await db
-      .select()
-      .from(instructionVersions)
-      .where(
-        and(
-          eq(instructionVersions.instructionId, instructionId),
-          eq(instructionVersions.version, instruction.currentVersion),
-        ),
-      )
-      .limit(1);
-    if (!version) throw new Error("That instruction has no version to attach.");
-
-    await db.insert(auditInstructionLinks).values({
-      workspaceId: audit.workspaceId,
-      auditId,
-      instructionId,
-      // Pin the version: editing the instruction later must not change this audit.
-      instructionVersionId: version.id,
-      source: "saved",
-      addedBy: user.id,
-    });
-  }
-
-  // The set changed, so any previously-detected conflicts are stale.
-  await db.update(audits).set({ instructionConflicts: [] }).where(eq(audits.id, auditId));
-  revalidatePath(`/w/[slug]/audits/${auditId}/edit`, "page");
-}
-
-/**
- * Conflicts are surfaced, never resolved automatically: the product's position is that the
- * user decides which instruction wins (PRD §9.3).
- */
-export async function checkConflicts(formData: FormData) {
-  const auditId = String(formData.get("auditId"));
-  const { audit } = await loadAudit(auditId, "audits.edit");
-
-  const resolved = await resolveInstructions(auditId);
-  const conflicts = await detectInstructionConflicts(audit.workspaceId, resolved);
-
-  await db.update(audits).set({ instructionConflicts: conflicts }).where(eq(audits.id, auditId));
-  revalidatePath(`/w/[slug]/audits/${auditId}/edit`, "page");
-  return { conflicts: conflicts.length };
-}
-
-export async function resolveConflict(formData: FormData) {
-  const auditId = String(formData.get("auditId"));
-  const index = Number(formData.get("index"));
-  const resolution = String(formData.get("resolution")) as "keep_a" | "keep_b" | "keep_both";
-  const { audit } = await loadAudit(auditId, "audits.edit");
-
-  const conflicts = [...audit.instructionConflicts];
-  if (!conflicts[index]) throw new Error("That conflict no longer exists.");
-  conflicts[index] = { ...conflicts[index], resolution };
-
-  await db.update(audits).set({ instructionConflicts: conflicts }).where(eq(audits.id, auditId));
-  revalidatePath(`/w/[slug]/audits/${auditId}/edit`, "page");
-}
-
 export async function addTextInput(formData: FormData) {
   const auditId = String(formData.get("auditId"));
   const { audit, user } = await loadAudit(auditId, "audits.edit");
@@ -343,7 +208,7 @@ export async function addTextInput(formData: FormData) {
     metadata: { kind: "text", name },
   });
 
-  revalidatePath(`/w/[slug]/audits/${auditId}/edit`, "page");
+  revalidatePath(`/w/[slug]/audits/${auditId}`, "page");
 }
 
 export async function removeInput(formData: FormData) {
@@ -375,7 +240,7 @@ export async function removeInput(formData: FormData) {
     metadata: { name: input.name, soft: Boolean(latestRevision) },
   });
 
-  revalidatePath(`/w/[slug]/audits/${input.auditId}/edit`, "page");
+  revalidatePath(`/w/[slug]/audits/${input.auditId}`, "page");
 }
 
 export type RunAuditState = { error?: string; ok?: boolean };
@@ -390,13 +255,6 @@ export async function runAudit(_prev: RunAuditState, formData: FormData): Promis
   if (!audit) return { error: "Audit not found." };
 
   const { user } = await requireCanRunAudit(audit.workspaceId);
-
-  const unresolved = audit.instructionConflicts.filter((c) => !c.resolution);
-  if (unresolved.length > 0) {
-    return {
-      error: `Resolve ${unresolved.length} instruction conflict${unresolved.length === 1 ? "" : "s"} before running this audit.`,
-    };
-  }
 
   const { jobId } = await queueAuditRun({
     auditId,
@@ -593,7 +451,7 @@ export async function deleteAudit(formData: FormData) {
   });
 
   await db.delete(audits).where(eq(audits.id, auditId));
-  redirect(`/w/${slug}/audits`);
+  redirect(`/w/${slug}`);
 }
 
 export async function duplicateAudit(formData: FormData) {
@@ -611,8 +469,6 @@ export async function duplicateAudit(formData: FormData) {
         scope: audit.scope,
         domain: audit.domain,
         subcategory: audit.subcategory,
-        templateId: audit.templateId,
-        templateVersionId: audit.templateVersionId,
         entityId: audit.entityId,
         clientId: audit.clientId,
         periodStart: audit.periodStart,
@@ -623,21 +479,6 @@ export async function duplicateAudit(formData: FormData) {
         creatorId: user.id,
       })
       .returning({ id: audits.id });
-
-    const links = await tx
-      .select()
-      .from(auditInstructionLinks)
-      .where(eq(auditInstructionLinks.auditId, auditId));
-    for (const link of links) {
-      await tx.insert(auditInstructionLinks).values({
-        workspaceId: audit.workspaceId,
-        auditId: copy.id,
-        instructionId: link.instructionId,
-        instructionVersionId: link.instructionVersionId,
-        source: link.source,
-        addedBy: user.id,
-      });
-    }
 
     // Text inputs copy cleanly; files are left behind deliberately rather than duplicating
     // storage objects the user did not ask to copy.
@@ -671,5 +512,99 @@ export async function duplicateAudit(formData: FormData) {
     metadata: { from: auditId },
   });
 
-  redirect(`/w/${slug}/audits/${newId}/edit`);
+  redirect(`/w/${slug}/audits/${newId}`);
+}
+
+/* -------------------------------------------------------------------------- */
+/* New-audit options                                                          */
+/* -------------------------------------------------------------------------- */
+
+export type NewAuditOptions = {
+  previousAudits: PreviousAuditOption[];
+  entities: { id: string; legalName: string }[];
+  clients: { id: string; name: string }[];
+  /** 1–12. The form offers fiscal years and quarters that start here. */
+  fiscalYearStartMonth: number;
+};
+
+export type NewAuditOptionsResult =
+  | { ok: true; options: NewAuditOptions }
+  | { ok: false; error: string };
+
+/**
+ * Everything the new-audit dialog needs to render.
+ *
+ * This is a read, not a mutation, and it deliberately does not run with the pages that host
+ * the dialog: filling a form most visits never open should not cost every library page a
+ * round of queries. The dialog asks for it the first time it is opened.
+ *
+ * It is still a Server Function, reachable by direct POST, so it re-establishes membership
+ * and the create permission itself rather than trusting the caller.
+ */
+export async function loadNewAuditOptions(workspaceSlug: string): Promise<NewAuditOptionsResult> {
+  const workspace = await workspaceBySlug(workspaceSlug);
+
+  let role;
+  try {
+    const { membership } = await requireMember(workspace.id);
+    role = membership.role;
+  } catch {
+    return { ok: false, error: "You do not have access to this workspace." };
+  }
+
+  if (!roleHas(role, "audits.create")) {
+    return {
+      ok: false,
+      error: `Your role (${role.replace(/_/g, " ")}) can view audits but not start one. An owner or admin can change this in Settings › Members and roles.`,
+    };
+  }
+
+  const [previousRows, entityRows, clientRows] = await Promise.all([
+    db
+      .select({
+        id: audits.id,
+        name: audits.name,
+        domain: audits.domain,
+        status: audits.status,
+        periodLabel: audits.periodLabel,
+        updatedAt: audits.updatedAt,
+      })
+      .from(audits)
+      .where(and(eq(audits.workspaceId, workspace.id), isNull(audits.archivedAt)))
+      .orderBy(desc(audits.updatedAt))
+      .limit(40),
+
+    db
+      .select({ id: entities.id, legalName: entities.legalName })
+      .from(entities)
+      .where(eq(entities.workspaceId, workspace.id))
+      .orderBy(entities.legalName),
+
+    workspace.type === "firm"
+      ? db
+          .select({ id: clients.id, name: clients.name })
+          .from(clients)
+          .where(eq(clients.workspaceId, workspace.id))
+          .orderBy(clients.name)
+      : Promise.resolve([] as { id: string; name: string }[]),
+  ]);
+
+  const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
+
+  return {
+    ok: true,
+    options: {
+      previousAudits: previousRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        domain: row.domain,
+        periodLabel: row.periodLabel,
+        status: row.status,
+        updatedAt: dateFormat.format(row.updatedAt),
+      })),
+      entities: entityRows,
+      clients: clientRows,
+      fiscalYearStartMonth: workspace.fiscalYearStartMonth,
+    },
+  };
 }

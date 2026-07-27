@@ -2,7 +2,7 @@
 
 import {
   RiAddLine,
-  RiArrowLeftSLine,
+  RiArrowRightSLine,
   RiChat3Line,
   RiCloseLine,
   RiCornerDownRightLine,
@@ -24,6 +24,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { InputUploader } from "@/components/audit/input-uploader";
+import { TextInputForm } from "@/components/audit/text-input-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,6 +82,7 @@ const SOURCE_LABEL: Record<InstructionSnapshotEntry["source"], string> = {
   platform_safety: "Platform safety",
   organization_mandatory: "Organization (mandatory)",
   client_mandatory: "Client (mandatory)",
+  /** No longer produced; kept so revisions recorded before templates were removed still render. */
   template: "Template",
   saved: "Saved instruction",
   audit_specific: "This audit only",
@@ -97,9 +100,6 @@ export type InputPanelProps = {
   dataFreshness: string[];
   /** Evidence the model itself said it lacked, from the revision's plan. */
   missingEvidence: string[];
-  /** What the template asks for. Not a checklist — we do not guess whether a file satisfies it. */
-  recommendedInputs: { name: string; description: string; formats: string[]; required: boolean }[];
-  requiredEvidence: string[];
   revisionLabel: string | null;
   canEdit: boolean;
 };
@@ -169,7 +169,7 @@ export function InputPanel(props: InputPanelProps) {
 
   if (!open) {
     return (
-      <aside className="hidden shrink-0 border-r border-border bg-sidebar lg:block">
+      <aside className="hidden shrink-0 border-l border-border bg-sidebar lg:block">
         <div className="sticky top-12 flex w-12 flex-col items-center gap-2 py-3">
           <Button
             variant="ghost"
@@ -191,7 +191,7 @@ export function InputPanel(props: InputPanelProps) {
   return (
     <aside
       aria-label="Audit inputs and instructions"
-      className="hidden w-[21rem] shrink-0 border-r border-border bg-sidebar lg:block"
+      className="hidden w-[21rem] shrink-0 border-l border-border bg-sidebar lg:block"
     >
       <div className="sticky top-12 flex h-[calc(100dvh-3rem)] flex-col">
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
@@ -201,10 +201,10 @@ export function InputPanel(props: InputPanelProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                render={<Link href={`/w/${props.slug}/audits/${props.auditId}/edit`} />}
+                render={<Link href={`/w/${props.slug}/audits/${props.auditId}/revisions`} />}
               >
                 <RiAddLine className="size-4" />
-                Add
+                New revision
               </Button>
             ) : null}
             <Button
@@ -214,7 +214,7 @@ export function InputPanel(props: InputPanelProps) {
               aria-expanded
               aria-label="Hide the inputs panel"
             >
-              <RiArrowLeftSLine className="size-4" />
+              <RiArrowRightSLine className="size-4" />
             </Button>
           </div>
         </div>
@@ -292,6 +292,15 @@ export function InputPanel(props: InputPanelProps) {
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-2">
+                    {/* The setup page is gone: this panel is where evidence is added once the
+                        audit exists, whether before the first run or between revisions. */}
+                    {props.canEdit ? (
+                      <div className="space-y-2 pb-1">
+                        <InputUploader auditId={props.auditId} disabled={false} />
+                        <TextInputForm auditId={props.auditId} disabled={false} />
+                      </div>
+                    ) : null}
+
                     <div className="relative">
                       <RiSearchLine
                         className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -444,32 +453,6 @@ export function InputPanel(props: InputPanelProps) {
                       The last run did not report missing evidence.
                     </p>
                   )}
-
-                  {props.recommendedInputs.length > 0 || props.requiredEvidence.length > 0 ? (
-                    <>
-                      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Recommended by the template
-                      </p>
-                      <ul className="space-y-1.5">
-                        {props.recommendedInputs.map((item) => (
-                          <li key={item.name} className="text-xs">
-                            <span className="font-medium">{item.name}</span>
-                            {item.required ? (
-                              <Badge variant="outline" className="ml-1.5 text-[10px]">
-                                Required
-                              </Badge>
-                            ) : null}
-                            <p className="text-[11px] text-muted-foreground">{item.description}</p>
-                          </li>
-                        ))}
-                        {props.requiredEvidence.map((item) => (
-                          <li key={item} className="text-xs">
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : null}
                 </AccordionContent>
               </AccordionItem>
 

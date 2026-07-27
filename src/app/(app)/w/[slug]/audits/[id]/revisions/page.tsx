@@ -36,6 +36,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { db } from "@/db";
 import { findings } from "@/db/schema";
 import type { SeverityLevel } from "@/lib/audit-filters";
@@ -324,7 +325,10 @@ export default async function RevisionsPage({ params, searchParams }: PageProps)
           <RiArrowLeftLine className="size-4" aria-hidden="true" />
           Back to {audit.name}
         </Button>
-        <h1 className="font-heading text-xl font-semibold">Revision history</h1>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <SidebarTrigger className="-ml-1.5 shrink-0 text-muted-foreground" />
+          <h1 className="font-heading text-xl font-semibold">Revision history</h1>
+        </div>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Each run of this audit is published as its own revision and then left alone. Nothing here
           is edited or regenerated in place, so the conclusion a reviewer signed off on can always

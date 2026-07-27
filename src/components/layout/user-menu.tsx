@@ -5,12 +5,9 @@ import { useTransition } from "react";
 import {
   RiComputerLine,
   RiExpandUpDownLine,
-  RiFileCopyLine,
-  RiFileListLine,
   RiHistoryLine,
   RiLogoutBoxRLine,
   RiMoonLine,
-  RiSearchEyeLine,
   RiSettings3Line,
   RiSunLine,
 } from "@remixicon/react";
@@ -87,19 +84,6 @@ export function UserMenu({
             <DropdownMenuSeparator />
             {/* The sidebar is the seven working sections. Everything administrative lives
                 here, where you look for it once a month rather than every day. */}
-            <DropdownMenuItem nativeButton={false} render={<Link href={`${homeHref}/audits`} />}>
-              <RiSearchEyeLine aria-hidden="true" />
-              All audits
-            </DropdownMenuItem>
-            <DropdownMenuItem nativeButton={false} render={<Link href={`${homeHref}/templates`} />}>
-              <RiFileCopyLine aria-hidden="true" />
-              Audit templates
-            </DropdownMenuItem>
-            <DropdownMenuItem nativeButton={false} render={<Link href={`${homeHref}/instructions`} />}>
-              <RiFileListLine aria-hidden="true" />
-              Instructions
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem nativeButton={false} render={<Link href={`${homeHref}/settings`} />}>
               <RiSettings3Line aria-hidden="true" />
               Workspace settings

@@ -331,8 +331,6 @@ export type ExportProvenance = {
   modelId: string | null;
   promptVersion: string | null;
   schemaVersion: string | null;
-  templateName: string | null;
-  templateVersion: number | null;
   revisionNumber: number;
   revisionStatus: "draft" | "processing" | "completed" | "failed" | "approved";
   generatedAt: string;

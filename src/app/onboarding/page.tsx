@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
   // is sent to it rather than being offered a second setup flow.
   const workspaces = await listWorkspaces(user.id);
   if (workspaces.length > 0) {
-    redirect(`/w/${workspaces[0].slug}/audits`);
+    redirect(`/w/${workspaces[0].slug}`);
   }
 
   return (
@@ -29,10 +29,6 @@ export default async function OnboardingPage() {
       <main className="w-full max-w-xl">
         <CreateWorkspaceForm />
       </main>
-
-      <p className="max-w-xl text-center text-xs leading-relaxed text-muted-foreground">
-        Signed in as {user.email}. You will be the owner of this workspace.
-      </p>
     </div>
   );
 }

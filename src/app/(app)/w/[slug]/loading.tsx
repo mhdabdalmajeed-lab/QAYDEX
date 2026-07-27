@@ -1,3 +1,4 @@
+import { PageHeaderSkeleton } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WorkspaceLoading() {
@@ -5,10 +6,7 @@ export default function WorkspaceLoading() {
     <div className="flex flex-1 flex-col" aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading workspace…</span>
 
-      <div className="flex flex-col gap-3 border-b border-border px-4 py-4 md:px-6">
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="h-4 w-64" />
-      </div>
+      <PageHeaderSkeleton />
 
       <div className="flex flex-col gap-5 px-4 py-5 md:px-6">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">

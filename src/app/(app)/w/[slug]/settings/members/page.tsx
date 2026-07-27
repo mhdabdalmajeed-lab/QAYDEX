@@ -106,13 +106,6 @@ export default async function MembersSettingsPage({ params, searchParams }: Prop
           { label: "Members and roles" },
         ]}
         title="Members and roles"
-        description={
-          <>
-            {members.length} member{members.length === 1 ? "" : "s"} of {workspace.name}. A role
-            is enforced on the server on every request — including on direct API calls — not
-            only by what this interface offers.
-          </>
-        }
       />
 
       <main className="flex flex-1 flex-col gap-6 px-4 py-5 md:px-6">

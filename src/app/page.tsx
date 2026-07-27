@@ -15,5 +15,5 @@ export default async function RootPage() {
   const workspaces = await listWorkspaces(user.id);
   if (workspaces.length === 0) redirect("/onboarding");
 
-  redirect(`/w/${workspaces[0].slug}/audits`);
+  redirect(`/w/${workspaces[0].slug}`);
 }

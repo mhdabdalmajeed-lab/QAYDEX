@@ -2,7 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { RiInboxLine, RiSettings3Line } from "@remixicon/react";
+import { RiPlayLine } from "@remixicon/react";
 
 import { BlockActions, HiddenBlockRow } from "@/components/audit/block-actions";
 import { FindingTriageList, type TriageFinding } from "@/components/audit/finding-triage";
@@ -12,9 +12,9 @@ import { InputPanel } from "@/components/audit/input-panel";
 import { AuditStatusBadge, RiskBadge, describePeriod } from "@/components/audit/meta";
 import { ProcessingPanel } from "@/components/audit/processing-panel";
 import { QualityReviewNotice } from "@/components/audit/quality-review";
+import { RunButton } from "@/components/audit/run-button";
 import { AuditBlockView } from "@/components/blocks";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyContent,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { db } from "@/db";
 import {
   blockStates,
@@ -37,7 +38,6 @@ import {
 import type { AuditBlock } from "@/lib/ai/blocks/schemas";
 import { buildProgressPayload } from "@/lib/audit/progress-server";
 import {
-  countLiveInputs,
   getAuditContext,
   getLatestJob,
   getPanelInputs,
@@ -78,7 +78,7 @@ export default async function AuditPage({ params, searchParams }: Params) {
   const { slug, id } = await params;
   const query = await searchParams;
   const ctx = await getAuditContext(slug, id);
-  const { audit, workspace, can } = ctx;
+  const { audit, workspace, membership, can } = ctx;
 
   const revisions = await listRevisions(workspace.id, audit.id);
   const revision = await resolveRevision(
@@ -95,28 +95,24 @@ export default async function AuditPage({ params, searchParams }: Params) {
     job?.job.status === "running" ||
     job?.job.status === "queued";
 
-  const [panelInputs, conversations, liveInputs] = await Promise.all([
+  const [panelInputs, conversations] = await Promise.all([
     getPanelInputs(workspace.id, audit.id, revision?.id ?? null),
     listAuditConversations(workspace.id, audit.id),
-    countLiveInputs(workspace.id, audit.id),
   ]);
 
   const header = (
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-6 py-4">
+    <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 md:px-6">
       <div className="min-w-0">
-        <h1 className="truncate text-xl font-semibold">{audit.name}</h1>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <SidebarTrigger className="-ml-1.5 shrink-0 text-muted-foreground" />
+          <h1 className="truncate text-xl font-semibold">{audit.name}</h1>
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <AuditStatusBadge status={audit.status} />
           {audit.overallRisk ? <RiskBadge risk={audit.overallRisk} /> : null}
           <Badge variant="outline">{describePeriod(audit)}</Badge>
           {ctx.entityName ? <Badge variant="outline">{ctx.entityName}</Badge> : null}
           {ctx.clientName ? <Badge variant="outline">Client: {ctx.clientName}</Badge> : null}
-          {ctx.templateName ? (
-            <Badge variant="outline">
-              {ctx.templateName}
-              {ctx.templateVersion ? ` v${ctx.templateVersion}` : ""}
-            </Badge>
-          ) : null}
           {revision ? (
             <Link
               href={`/w/${slug}/audits/${audit.id}/revisions`}
@@ -132,6 +128,16 @@ export default async function AuditPage({ params, searchParams }: Params) {
         slug={slug}
         auditId={audit.id}
         auditName={audit.name}
+        details={{
+          auditId: audit.id,
+          name: audit.name,
+          objective: audit.objective,
+          scope: audit.scope,
+          periodLabel: audit.periodLabel,
+          periodStart: audit.periodStart,
+          periodEnd: audit.periodEnd,
+          customInstructions: audit.customInstructions,
+        }}
         status={audit.status}
         hasRevision={Boolean(revision)}
         isRunning={isRunning}
@@ -151,29 +157,15 @@ export default async function AuditPage({ params, searchParams }: Params) {
 
   return (
     <div className="flex min-h-0 flex-1">
-      <InputPanel
-        slug={slug}
-        auditId={audit.id}
-        inputs={panelInputs}
-        instructions={revision?.instructionSnapshot ?? []}
-        customInstructions={audit.customInstructions}
-        periodLabel={describePeriod(audit)}
-        dataFreshness={panelInputs
-          .map((input) => input.freshness)
-          .filter((value): value is string => Boolean(value))}
-        missingEvidence={revision?.plan?.missingEvidence ?? []}
-        recommendedInputs={ctx.recommendedInputs}
-        requiredEvidence={ctx.requiredEvidence}
-        revisionLabel={revision ? `Revision ${revision.revision}` : null}
-        canEdit={can("audits.edit")}
-      />
-
       <main className="flex min-w-0 flex-1 flex-col">
         {header}
 
         <div className="flex-1 overflow-y-auto px-6 pb-32 pt-6">
           <div className="mx-auto w-full max-w-4xl space-y-6">
-            {isRunning && job ? (
+            {/* Also shown after a failure, not only while running: a run that died at a stage
+                left a revision behind, and without this the page reads as an empty result
+                rather than a broken one. The panel carries the stage error and the retry. */}
+            {(isRunning || audit.status === "failed" || job?.job.status === "failed") && job ? (
               <ProcessingPanel
                 auditId={audit.id}
                 initial={buildProgressPayload(audit.status, job.job, job.stages)}
@@ -182,7 +174,36 @@ export default async function AuditPage({ params, searchParams }: Params) {
             ) : null}
 
             {!revision ? (
-              <NotRunYet slug={slug} auditId={audit.id} canRun={can("audits.run")} inputCount={liveInputs} />
+              // Nothing has been produced yet. The page is for results, so a draft says so
+              // and offers the one action that changes that; evidence is attached in the
+              // panel beside it.
+              !isRunning ? (
+                <Empty className="rounded-xl border border-dashed border-border py-16">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <RiPlayLine aria-hidden="true" />
+                    </EmptyMedia>
+                    <EmptyTitle>This audit has not run yet</EmptyTitle>
+                    <EmptyDescription>
+                      {panelInputs.length === 0
+                        ? "Attach evidence in the panel on the right, then run it. Running with nothing attached is allowed — the model will report that it had nothing to examine rather than invent findings."
+                        : `${panelInputs.length} input${panelInputs.length === 1 ? "" : "s"} attached. Run it to produce findings.`}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <RunButton
+                      auditId={audit.id}
+                      workspaceSlug={slug}
+                      blockedReason={
+                        can("audits.run")
+                          ? null
+                          : `Your role (${membership.role.replace(/_/g, " ")}) cannot run audits.`
+                      }
+                      hasRevisions={false}
+                    />
+                  </EmptyContent>
+                </Empty>
+              ) : null
             ) : (
               <>
                 {/* Above the findings on purpose: a rejected audit must not read as finished. */}
@@ -231,6 +252,21 @@ export default async function AuditPage({ params, searchParams }: Params) {
         </div>
       </main>
 
+      <InputPanel
+        slug={slug}
+        auditId={audit.id}
+        inputs={panelInputs}
+        instructions={revision?.instructionSnapshot ?? []}
+        customInstructions={audit.customInstructions}
+        periodLabel={describePeriod(audit)}
+        dataFreshness={panelInputs
+          .map((input) => input.freshness)
+          .filter((value): value is string => Boolean(value))}
+        missingEvidence={revision?.plan?.missingEvidence ?? []}
+        revisionLabel={revision ? `Revision ${revision.revision}` : null}
+        canEdit={can("audits.edit")}
+      />
+
       <FloatingChat
         slug={slug}
         auditId={audit.id}
@@ -246,41 +282,6 @@ export default async function AuditPage({ params, searchParams }: Params) {
   );
 }
 
-function NotRunYet({
-  slug,
-  auditId,
-  canRun,
-  inputCount,
-}: {
-  slug: string;
-  auditId: string;
-  canRun: boolean;
-  inputCount: number;
-}) {
-  return (
-    <Empty>
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <RiInboxLine aria-hidden />
-        </EmptyMedia>
-        <EmptyTitle>This audit has not run yet</EmptyTitle>
-        <EmptyDescription>
-          {inputCount === 0
-            ? "Attach the evidence and choose the instructions first. Nothing is analysed until you start the run."
-            : `${inputCount} input${inputCount === 1 ? "" : "s"} attached. Finish the setup to run the audit.`}
-        </EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent>
-        {canRun ? (
-          <Button render={<Link href={`/w/${slug}/audits/${auditId}/edit`} />}>
-            <RiSettings3Line aria-hidden />
-            Open setup
-          </Button>
-        ) : null}
-      </EmptyContent>
-    </Empty>
-  );
-}
 
 function BlocksSkeleton() {
   return (

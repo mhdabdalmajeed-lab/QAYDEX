@@ -519,7 +519,7 @@ function ConversationStart({ slug, audits }: { slug: string; audits: ChatAudit[]
             evidence, and compute answers from them. Without one it has no data to look at —
             it can discuss method, but it will not invent a number about your business.
           </p>
-          <Button variant="outline" size="sm" className="mt-3" render={<Link href={`/w/${slug}/audits`} />}>
+          <Button variant="outline" size="sm" className="mt-3" render={<Link href={`/w/${slug}`} />}>
             <RiSearchEyeLine aria-hidden="true" />
             Browse audits
           </Button>

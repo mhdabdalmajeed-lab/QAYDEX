@@ -27,7 +27,7 @@ import {
  */
 
 export type WorkspaceFieldErrors = Partial<
-  Record<"name" | "type" | "industry" | "baseCurrency" | "fiscalYearStartMonth", string>
+  Record<"name" | "industry" | "baseCurrency" | "fiscalYearStartMonth", string>
 >;
 
 export type WorkspaceFormState = {
@@ -43,9 +43,6 @@ const createWorkspaceSchema = z.object({
     .trim()
     .min(2, "Give the workspace a name of at least 2 characters.")
     .max(80, "Keep the name under 80 characters."),
-  type: z.enum(workspaceTypeEnum.enumValues, {
-    error: "Choose whether this workspace audits your own company or clients.",
-  }),
   industry: z.string().trim().max(80, "Keep the industry under 80 characters."),
   baseCurrency: z.enum(BASE_CURRENCIES, { error: "Choose a base currency." }),
   fiscalYearStartMonth: z
@@ -61,7 +58,6 @@ function toFieldErrors(issues: readonly z.core.$ZodIssue[]): WorkspaceFieldError
     const key = issue.path[0];
     if (
       (key === "name" ||
-        key === "type" ||
         key === "industry" ||
         key === "baseCurrency" ||
         key === "fiscalYearStartMonth") &&
@@ -138,7 +134,6 @@ export async function createWorkspace(
   const monthRaw = readString(formData, "fiscalYearStartMonth");
   const parsed = createWorkspaceSchema.safeParse({
     name: readString(formData, "name"),
-    type: readString(formData, "type"),
     industry: readString(formData, "industry"),
     baseCurrency: readString(formData, "baseCurrency"),
     fiscalYearStartMonth: Number.parseInt(monthRaw, 10),
@@ -148,7 +143,10 @@ export async function createWorkspace(
     return { fieldErrors: toFieldErrors(parsed.error.issues) };
   }
 
-  const { name, type, industry, baseCurrency, fiscalYearStartMonth } = parsed.data;
+  const { name, industry, baseCurrency, fiscalYearStartMonth } = parsed.data;
+  // Every workspace is an internal company auditing itself; the firm flavour is
+  // no longer offered, so the type is fixed rather than read from the form.
+  const type: (typeof workspaceTypeEnum.enumValues)[number] = "internal";
   const accountingStandards = readAccountingStandards(formData);
   const base = slugify(name);
 
@@ -224,5 +222,5 @@ export async function createWorkspace(
 
   revalidatePath("/", "layout");
   // Outside the try/catch above: redirect() reports success by throwing.
-  redirect(`/w/${created.slug}/audits`);
+  redirect(`/w/${created.slug}`);
 }

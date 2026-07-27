@@ -86,21 +86,6 @@ export const auditDomainEnum = pgEnum("audit_domain", [
   "suppliers",
 ]);
 
-/** PRD §9.1 */
-export const instructionCategoryEnum = pgEnum("instruction_category", [
-  "organization",
-  "client",
-  "subsidiary",
-  "department",
-  "audit_type",
-  "accounting_standard",
-  "industry",
-  "reporting",
-  "risk",
-  "data_handling",
-  "output_formatting",
-]);
-
 export const visibilityEnum = pgEnum("visibility", [
   "workspace",
   "private",
@@ -304,16 +289,6 @@ export type InstructionSnapshotEntry = {
   category?: string;
   text: string;
   mandatory: boolean;
-};
-
-export type InstructionConflict = {
-  aRef: string;
-  bRef: string;
-  aName: string;
-  bName: string;
-  description: string;
-  resolution?: "keep_a" | "keep_b" | "keep_both" | "manual";
-  resolutionNote?: string;
 };
 
 export type InputSnapshotEntry = {
@@ -543,143 +518,6 @@ export const memberClientAccess = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Instructions (PRD §9)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const instructions = pgTable(
-  "instructions",
-  {
-    id: id(),
-    workspaceId: uuid("workspace_id")
-      .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    description: text("description"),
-    category: instructionCategoryEnum("category").notNull(),
-    ownerId: uuid("owner_id").references(() => authUsers.id, { onDelete: "set null" }),
-    clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }),
-    visibility: visibilityEnum("visibility").notNull().default("workspace"),
-    /** Lower sorts first; combined with source rank to resolve the hierarchy. */
-    priority: integer("priority").notNull().default(100),
-    mandatory: boolean("mandatory").notNull().default(false),
-    status: lifecycleStatusEnum("status").notNull().default("active"),
-    tags: text("tags").array(),
-    applicableModules: text("applicable_modules").array(),
-    applicableEntityIds: uuid("applicable_entity_ids").array(),
-    applicableTemplateIds: uuid("applicable_template_ids").array(),
-    effectiveDate: date("effective_date"),
-    expirationDate: date("expiration_date"),
-    currentVersion: integer("current_version").notNull().default(1),
-    createdAt: createdAt(),
-    updatedAt: updatedAt(),
-  },
-  (t) => [
-    index("instructions_workspace_idx").on(t.workspaceId),
-    index("instructions_category_idx").on(t.workspaceId, t.category),
-    workspacePolicy("instructions_members", t.workspaceId),
-  ],
-);
-
-/** Editing an instruction must never change an audit that already used it (PRD §9.4). */
-export const instructionVersions = pgTable(
-  "instruction_versions",
-  {
-    id: id(),
-    workspaceId: uuid("workspace_id")
-      .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
-    instructionId: uuid("instruction_id")
-      .notNull()
-      .references(() => instructions.id, { onDelete: "cascade" }),
-    version: integer("version").notNull(),
-    text: text("text").notNull(),
-    changelog: text("changelog"),
-    createdBy: uuid("created_by").references(() => authUsers.id, { onDelete: "set null" }),
-    createdAt: createdAt(),
-  },
-  (t) => [
-    uniqueIndex("instruction_versions_unique").on(t.instructionId, t.version),
-    workspacePolicy("instruction_versions_members", t.workspaceId),
-  ],
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Templates (PRD §17)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const templates = pgTable(
-  "templates",
-  {
-    id: id(),
-    /** NULL for the system library that ships with the product. */
-    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
-      onDelete: "cascade",
-    }),
-    slug: text("slug").notNull(),
-    name: text("name").notNull(),
-    category: auditDomainEnum("category").notNull(),
-    subcategory: text("subcategory"),
-    description: text("description").notNull(),
-    isSystem: boolean("is_system").notNull().default(false),
-    visibility: visibilityEnum("visibility").notNull().default("system"),
-    tags: text("tags").array(),
-    currentVersion: integer("current_version").notNull().default(1),
-    createdBy: uuid("created_by").references(() => authUsers.id, { onDelete: "set null" }),
-    createdAt: createdAt(),
-    updatedAt: updatedAt(),
-  },
-  (t) => [
-    uniqueIndex("templates_slug_key").on(t.slug),
-    index("templates_category_idx").on(t.category),
-    // System templates (workspace_id IS NULL) are readable by every signed-in
-    // user; workspace templates stay tenant-scoped and only they may be written.
-    pgPolicy("templates_read", {
-      for: "all",
-      to: authenticatedRole,
-      using: sql`${t.workspaceId} is null or public.is_workspace_member(${t.workspaceId})`,
-      withCheck: sql`${t.workspaceId} is not null and public.is_workspace_member(${t.workspaceId})`,
-    }),
-  ],
-);
-
-export const templateVersions = pgTable(
-  "template_versions",
-  {
-    id: id(),
-    templateId: uuid("template_id")
-      .notNull()
-      .references(() => templates.id, { onDelete: "cascade" }),
-    version: integer("version").notNull(),
-    defaultTitle: text("default_title").notNull(),
-    auditDescription: text("audit_description").notNull(),
-    instructions: text("instructions").notNull(),
-    recommendedInputs: jsonb("recommended_inputs")
-      .$type<{ name: string; description: string; formats: string[]; required: boolean }[]>()
-      .notNull()
-      .default([]),
-    requiredEvidence: jsonb("required_evidence").$type<string[]>().notNull().default([]),
-    suggestedPeriod: text("suggested_period"),
-    expectedOutputStructure: jsonb("expected_output_structure")
-      .$type<BlockType[]>()
-      .notNull()
-      .default([]),
-    suggestedFollowups: jsonb("suggested_followups").$type<string[]>().notNull().default([]),
-    relevantIntegrations: text("relevant_integrations").array(),
-    createdAt: createdAt(),
-  },
-  (t) => [
-    uniqueIndex("template_versions_unique").on(t.templateId, t.version),
-    // Template bodies are readable by any signed-in user (the library ships with
-    // the product); writes go through the server, which bypasses RLS.
-    pgPolicy("template_versions_read", {
-      for: "select",
-      to: authenticatedRole,
-      using: sql`true`,
-    }),
-  ],
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Audits
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -695,10 +533,6 @@ export const audits = pgTable(
       onDelete: "set null",
     }),
     entityId: uuid("entity_id").references(() => entities.id, { onDelete: "set null" }),
-    templateId: uuid("template_id").references(() => templates.id, { onDelete: "set null" }),
-    templateVersionId: uuid("template_version_id").references(() => templateVersions.id, {
-      onDelete: "set null",
-    }),
     name: text("name").notNull(),
     objective: text("objective"),
     scope: text("scope"),
@@ -712,11 +546,6 @@ export const audits = pgTable(
     findingCount: integer("finding_count").notNull().default(0),
     /** Instructions written for this audit alone (PRD §8.4). */
     customInstructions: text("custom_instructions"),
-    /** Surfaced for the user to settle before generation, never auto-resolved (PRD §9.3). */
-    instructionConflicts: jsonb("instruction_conflicts")
-      .$type<InstructionConflict[]>()
-      .notNull()
-      .default([]),
     currentRevisionId: uuid("current_revision_id"),
     creatorId: uuid("creator_id").references(() => authUsers.id, { onDelete: "set null" }),
     reviewerId: uuid("reviewer_id").references(() => authUsers.id, { onDelete: "set null" }),
@@ -753,9 +582,6 @@ export const auditRevisions = pgTable(
     modelParams: jsonb("model_params").$type<Record<string, unknown>>().notNull().default({}),
     promptVersion: text("prompt_version"),
     schemaVersion: text("schema_version"),
-    templateVersionId: uuid("template_version_id").references(() => templateVersions.id, {
-      onDelete: "set null",
-    }),
     instructionSnapshot: jsonb("instruction_snapshot")
       .$type<InstructionSnapshotEntry[]>()
       .notNull()
@@ -777,33 +603,6 @@ export const auditRevisions = pgTable(
   (t) => [
     uniqueIndex("audit_revisions_unique").on(t.auditId, t.revision),
     workspacePolicy("audit_revisions_members", t.workspaceId),
-  ],
-);
-
-/** The user's current selection of saved instructions, frozen into the revision at run time. */
-export const auditInstructionLinks = pgTable(
-  "audit_instruction_links",
-  {
-    id: id(),
-    workspaceId: uuid("workspace_id")
-      .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
-    auditId: uuid("audit_id")
-      .notNull()
-      .references(() => audits.id, { onDelete: "cascade" }),
-    instructionId: uuid("instruction_id")
-      .notNull()
-      .references(() => instructions.id, { onDelete: "cascade" }),
-    instructionVersionId: uuid("instruction_version_id")
-      .notNull()
-      .references(() => instructionVersions.id, { onDelete: "cascade" }),
-    source: instructionSourceEnum("source").notNull().default("saved"),
-    addedBy: uuid("added_by").references(() => authUsers.id, { onDelete: "set null" }),
-    createdAt: createdAt(),
-  },
-  (t) => [
-    uniqueIndex("audit_instruction_links_unique").on(t.auditId, t.instructionId),
-    workspacePolicy("audit_instruction_links_members", t.workspaceId),
   ],
 );
 

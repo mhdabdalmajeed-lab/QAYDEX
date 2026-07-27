@@ -97,7 +97,6 @@ export default async function WorkspaceSettingsPage({ params, searchParams }: Pr
       <PageHeader
         breadcrumb={[{ label: "Settings", href: `/w/${slug}/settings` }, { label: "General" }]}
         title="Workspace"
-        description="What this workspace is, and the accounting context every audit inherits from it."
       />
 
       <main className="flex flex-1 flex-col gap-5 px-4 py-5 md:px-6">

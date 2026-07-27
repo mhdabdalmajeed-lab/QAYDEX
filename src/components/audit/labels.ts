@@ -60,7 +60,7 @@ export const SOURCE_EXPLANATION: Record<InstructionSource, string> = {
     "Marked mandatory in your instruction library, so it applies whether or not anyone selects it.",
   client_mandatory:
     "Mandatory for this client or entity. Applies automatically to audits scoped to them.",
-  template: "Comes from the template this audit was created from.",
+  template: "Carried by a template, from before templates were removed.",
   saved: "Reusable instructions someone chose for this audit.",
   audit_specific: "Written for this audit alone.",
   chat: "Added during a conversation about this audit.",

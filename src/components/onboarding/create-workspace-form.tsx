@@ -24,15 +24,19 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import {
   ACCOUNTING_STANDARDS,
   BASE_CURRENCIES,
   INDUSTRIES,
   MONTHS,
-  WORKSPACE_TYPES,
   standardFieldName,
 } from "@/lib/workspace-options";
 import { createWorkspace, type WorkspaceFormState } from "@/server/actions/workspace";
@@ -44,7 +48,6 @@ export function CreateWorkspaceForm() {
   );
 
   const nameId = useId();
-  const typeId = useId();
   const industryId = useId();
   const currencyId = useId();
   const monthId = useId();
@@ -87,62 +90,33 @@ export function CreateWorkspaceForm() {
               <FieldError id={`${nameId}-error`}>{errors?.name}</FieldError>
             </Field>
 
-            <FieldSet data-invalid={errors?.type ? true : undefined}>
-              <FieldLegend variant="label">Workspace type</FieldLegend>
-              <FieldDescription>
-                This decides whether audits are organised by entity or by client.
-              </FieldDescription>
-              <RadioGroup
-                id={typeId}
-                name="type"
-                defaultValue="internal"
-                disabled={pending}
-                required
-                aria-describedby={errors?.type ? `${typeId}-error` : undefined}
-              >
-                {WORKSPACE_TYPES.map((option) => (
-                  <FieldLabel key={option.value} htmlFor={`${typeId}-${option.value}`}>
-                    <Field orientation="horizontal">
-                      <RadioGroupItem
-                        id={`${typeId}-${option.value}`}
-                        value={option.value}
-                        aria-invalid={errors?.type ? true : undefined}
-                      />
-                      <div className="flex flex-col gap-0.5">
-                        <FieldTitle>{option.label}</FieldTitle>
-                        <FieldDescription>{option.description}</FieldDescription>
-                      </div>
-                    </Field>
-                  </FieldLabel>
-                ))}
-              </RadioGroup>
-              <FieldError id={`${typeId}-error`}>{errors?.type}</FieldError>
-            </FieldSet>
-
             <Field data-invalid={errors?.industry ? true : undefined}>
               <FieldLabel htmlFor={industryId}>Industry</FieldLabel>
-              <Input
-                id={industryId}
-                name="industry"
-                list={`${industryId}-options`}
-                autoComplete="off"
-                disabled={pending}
-                placeholder="Manufacturing"
-                aria-invalid={errors?.industry ? true : undefined}
-                aria-describedby={
-                  errors?.industry ? `${industryId}-error` : `${industryId}-hint`
-                }
-              />
-              <datalist id={`${industryId}-options`}>
-                {INDUSTRIES.map((industry) => (
-                  <option key={industry} value={industry} />
-                ))}
-              </datalist>
+              <Select name="industry" defaultValue="" disabled={pending}>
+                <SelectTrigger
+                  id={industryId}
+                  className="w-full"
+                  aria-invalid={errors?.industry ? true : undefined}
+                  aria-describedby={
+                    errors?.industry ? `${industryId}-error` : `${industryId}-hint`
+                  }
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Not stated</SelectItem>
+                  {INDUSTRIES.map((industry) => (
+                    <SelectItem key={industry} value={industry}>
+                      {industry}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors?.industry ? (
                 <FieldError id={`${industryId}-error`}>{errors.industry}</FieldError>
               ) : (
                 <FieldDescription id={`${industryId}-hint`}>
-                  Optional. Used to pick sensible benchmarks and templates.
+                  Optional. Used to pick sensible benchmarks.
                 </FieldDescription>
               )}
             </Field>
@@ -150,45 +124,59 @@ export function CreateWorkspaceForm() {
             <div className="grid gap-5 sm:grid-cols-2">
               <Field data-invalid={errors?.baseCurrency ? true : undefined}>
                 <FieldLabel htmlFor={currencyId}>Base currency</FieldLabel>
-                <NativeSelect
-                  className="w-full"
-                  id={currencyId}
+                <Select
                   name="baseCurrency"
                   defaultValue="USD"
                   disabled={pending}
                   required
-                  aria-invalid={errors?.baseCurrency ? true : undefined}
-                  aria-describedby={errors?.baseCurrency ? `${currencyId}-error` : undefined}
                 >
-                  {BASE_CURRENCIES.map((code) => (
-                    <NativeSelectOption key={code} value={code}>
-                      {code}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                  <SelectTrigger
+                    id={currencyId}
+                    className="w-full"
+                    aria-invalid={errors?.baseCurrency ? true : undefined}
+                    aria-describedby={
+                      errors?.baseCurrency ? `${currencyId}-error` : undefined
+                    }
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BASE_CURRENCIES.map((code) => (
+                      <SelectItem key={code} value={code}>
+                        {code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FieldError id={`${currencyId}-error`}>{errors?.baseCurrency}</FieldError>
               </Field>
 
               <Field data-invalid={errors?.fiscalYearStartMonth ? true : undefined}>
                 <FieldLabel htmlFor={monthId}>Fiscal year starts</FieldLabel>
-                <NativeSelect
-                  className="w-full"
-                  id={monthId}
+                <Select
                   name="fiscalYearStartMonth"
                   defaultValue="1"
                   disabled={pending}
                   required
-                  aria-invalid={errors?.fiscalYearStartMonth ? true : undefined}
-                  aria-describedby={
-                    errors?.fiscalYearStartMonth ? `${monthId}-error` : undefined
-                  }
                 >
-                  {MONTHS.map((month) => (
-                    <NativeSelectOption key={month.value} value={String(month.value)}>
-                      {month.label}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
+                  <SelectTrigger
+                    id={monthId}
+                    className="w-full"
+                    aria-invalid={errors?.fiscalYearStartMonth ? true : undefined}
+                    aria-describedby={
+                      errors?.fiscalYearStartMonth ? `${monthId}-error` : undefined
+                    }
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((month) => (
+                      <SelectItem key={month.value} value={String(month.value)}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FieldError id={`${monthId}-error`}>
                   {errors?.fiscalYearStartMonth}
                 </FieldError>

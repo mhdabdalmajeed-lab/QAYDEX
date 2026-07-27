@@ -117,7 +117,6 @@ export default async function AiSettingsPage({ params, searchParams }: Props) {
           { label: "AI data controls" },
         ]}
         title="AI data controls"
-        description="What may leave this workspace, where it may go, and who may send it."
       />
 
       <main className="flex flex-1 flex-col gap-5 px-4 py-5 md:px-6">

@@ -21,8 +21,7 @@ import {
  *
  * Pages deliberately absent from this list are reached where they are actually needed:
  *   · Settings, and the audit trail inside it → the user menu.
- *   · Templates and Instructions → the audit setup flow, which is the only place you pick one.
- *   · The unfiltered audit library and a single audit → the workspace home and each domain page.
+ *   · A single audit → the workspace home and each domain page.
  */
 export type NavSection = {
   title: string;

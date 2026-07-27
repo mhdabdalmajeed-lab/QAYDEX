@@ -193,32 +193,10 @@ export default async function IntegrationsPage({ params, searchParams }: Props) 
   const rawFilter = firstParam(query.filter);
   const view: View = rawFilter && isView(rawFilter) ? rawFilter : "available";
 
-  // Connection counts back nearly every view's copy, and are cheap.
-  const statusCounts = await db
-    .select({ status: integrationConnections.status, total: count() })
-    .from(integrationConnections)
-    .where(eq(integrationConnections.workspaceId, workspaceId))
-    .groupBy(integrationConnections.status);
-
-  const connectionTotal = statusCounts.reduce((sum, row) => sum + row.total, 0);
-  const liveTotal = statusCounts
-    .filter((row) => row.status !== "disconnected")
-    .reduce((sum, row) => sum + row.total, 0);
-
   return (
     <>
       <PageHeader
         title="Integrations"
-        description={
-          <>
-            {connectionTotal === 0
-              ? "No connections yet."
-              : `${liveTotal} live connection${liveTotal === 1 ? "" : "s"} of ${connectionTotal}.`}{" "}
-            A connection is reusable; the data it brings in is not. Every import is a snapshot
-            belonging to one audit — refreshing it means a new audit revision, never a rewrite
-            of what a finished audit was built on.
-          </>
-        }
         actions={
           canManage ? (
             <Button render={<Link href={`/w/${slug}/integrations?filter=new`} />}>

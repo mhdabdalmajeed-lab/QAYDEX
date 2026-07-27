@@ -1,11 +1,9 @@
 "use client";
 
 import {
-  RiAddLine,
   RiArchiveLine,
   RiDeleteBinLine,
   RiDownloadLine,
-  RiEditLine,
   RiEyeLine,
   RiFileCopyLine,
   RiGitBranchLine,
@@ -27,6 +25,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import type { AuditDetailsFormProps } from "@/components/audit/audit-details-form";
+import { EditDetailsDialog } from "@/components/audit/edit-details-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -70,6 +70,8 @@ export type HeaderActionsProps = {
   slug: string;
   auditId: string;
   auditName: string;
+  /** Everything the details dialog edits, so the menu can open it in place. */
+  details: Omit<AuditDetailsFormProps, "disabled">;
   status: string;
   hasRevision: boolean;
   isRunning: boolean;
@@ -154,18 +156,7 @@ export function HeaderActions(props: HeaderActionsProps) {
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Change it</DropdownMenuLabel>
           <DropdownMenuGroup>
-            {props.can.edit ? (
-              <>
-                <DropdownMenuItem nativeButton={false} render={<Link href={`${base}/edit#inputs`} />}>
-                  <RiAddLine className="size-4" />
-                  Add evidence
-                </DropdownMenuItem>
-                <DropdownMenuItem nativeButton={false} render={<Link href={`${base}/edit#instructions`} />}>
-                  <RiEditLine className="size-4" />
-                  Edit instructions for a new revision
-                </DropdownMenuItem>
-              </>
-            ) : null}
+            {props.can.edit ? <EditDetailsDialog {...props.details} /> : null}
             {props.can.create ? <DuplicateItem slug={props.slug} auditId={props.auditId} /> : null}
           </DropdownMenuGroup>
 

@@ -137,8 +137,6 @@ export const PERMISSIONS = [
   "findings.assign",
   "findings.respond",
   "comments.create",
-  "instructions.manage",
-  "templates.manage",
   "integrations.manage",
   "chat.use",
   "activity.view",
@@ -166,8 +164,7 @@ const ROLE_PERMISSIONS: Record<MemberRole, Permission[]> = {
     "findings.assign",
     "findings.respond",
     "comments.create",
-    "instructions.manage",
-    "chat.use",
+      "chat.use",
     "clients.manage",
   ],
   internal_auditor: [
@@ -179,8 +176,7 @@ const ROLE_PERMISSIONS: Record<MemberRole, Permission[]> = {
     "audits.export",
     "findings.assign",
     "comments.create",
-    "instructions.manage",
-    "chat.use",
+      "chat.use",
   ],
   auditor: [
     "audits.view",

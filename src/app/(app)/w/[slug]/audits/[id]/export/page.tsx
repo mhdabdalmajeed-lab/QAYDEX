@@ -7,6 +7,7 @@ import { RiArrowLeftSLine, RiFileLine, RiLockLine } from "@remixicon/react";
 import { ExportForm, type ExportRevisionOption } from "@/components/audit/export-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Empty,
   EmptyDescription,
@@ -57,7 +58,7 @@ export default async function ExportPage({ params }: Params) {
   const back = `/w/${slug}/audits/${audit.id}`;
 
   const header = (
-    <div className="border-b border-border px-6 py-4">
+    <div className="px-4 py-4 md:px-6">
       <Button
         variant="ghost"
         size="sm"
@@ -67,7 +68,10 @@ export default async function ExportPage({ params }: Params) {
         <RiArrowLeftSLine aria-hidden />
         Back to audit
       </Button>
-      <h1 className="text-xl font-semibold">Export</h1>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <SidebarTrigger className="-ml-1.5 shrink-0 text-muted-foreground" />
+        <h1 className="text-xl font-semibold">Export</h1>
+      </div>
       <p className="mt-1 text-sm text-muted-foreground">{audit.name}</p>
     </div>
   );
