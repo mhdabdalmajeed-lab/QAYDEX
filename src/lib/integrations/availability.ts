@@ -63,7 +63,7 @@ export const CREDENTIAL_FIELD: Record<
   connection_string: {
     label: "Connection string",
     placeholder: "postgresql://user:password@host:5432/database",
-    help: "Stored encrypted with AES-256-GCM. Use a read-only role — Caydex only ever reads.",
+    help: "Stored encrypted with AES-256-GCM. Use a read-only role — QAYDEX only ever reads.",
   },
 };
 
@@ -94,7 +94,7 @@ export const CONNECTION_STATUS_LABELS = {
 } as const;
 
 export const CONNECTION_STATUS_DESCRIPTIONS = {
-  connected: "Caydex has exercised this credential against the provider.",
+  connected: "QAYDEX has exercised this credential against the provider.",
   pending:
     "The credential is stored and encrypted, but it has not been exercised against the provider — no data has been fetched.",
   error: "The last operation on this connection failed.",

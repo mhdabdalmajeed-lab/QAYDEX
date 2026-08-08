@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { RiShieldCheckLine } from "@remixicon/react";
+
+import { LogoMark } from "@/components/logo";
 
 export default function AuthLayout({
   children,
@@ -12,8 +13,8 @@ export default function AuthLayout({
         href="/"
         className="flex items-center gap-2 rounded-md text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <RiShieldCheckLine className="size-5 text-primary" aria-hidden="true" />
-        <span className="text-base font-semibold tracking-tight">Caydex</span>
+        <LogoMark className="size-7" label={null} />
+        <span className="text-base font-semibold tracking-wide">QAYDEX</span>
       </Link>
 
       <main className="w-full max-w-sm">{children}</main>

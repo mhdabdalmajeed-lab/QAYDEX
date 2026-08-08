@@ -30,7 +30,7 @@ export default function GlobalError({
       >
         <main style={{ maxWidth: "32rem", textAlign: "center" }}>
           <h1 style={{ fontSize: "1.125rem", fontWeight: 600, margin: "0 0 0.5rem" }}>
-            Caydex could not start
+            QAYDEX could not start
           </h1>
           <p style={{ fontSize: "0.875rem", lineHeight: 1.6, margin: "0 0 1.25rem", color: "#52525b" }}>
             An unrecoverable error occurred while loading the application. Your audits and

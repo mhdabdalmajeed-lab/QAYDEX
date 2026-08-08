@@ -1,5 +1,6 @@
-import { RiShieldCheckLine } from "@remixicon/react";
 import type { Metadata } from "next";
+
+import { LogoMark } from "@/components/logo";
 
 /**
  * Standalone chrome for the public share view (PRD §24).
@@ -37,9 +38,9 @@ export default function ShareLayout({ children }: { children: React.ReactNode })
 
       <header className="border-b border-border">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-            <RiShieldCheckLine aria-hidden="true" className="size-4 text-muted-foreground" />
-            Caydex
+          <span className="flex items-center gap-2 text-sm font-semibold tracking-wide">
+            <LogoMark className="size-5" label={null} />
+            QAYDEX
           </span>
           <span className="text-xs text-muted-foreground">Shared audit · read-only</span>
         </div>

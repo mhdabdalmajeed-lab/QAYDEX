@@ -485,8 +485,8 @@ export function AuditPdf({ payload }: { payload: ExportPayload }) {
       title={`${payload.audit.name} — ${kindLabel}`}
       author={payload.organisation.name}
       subject={payload.audit.objective ?? undefined}
-      creator="Caydex"
-      producer="Caydex"
+      creator="QAYDEX"
+      producer="QAYDEX"
     >
       <Page size="A4" style={styles.page}>
         <Cover payload={payload} kindLabel={kindLabel} />

@@ -249,7 +249,7 @@ export function ChatView({
 
           {busy || streamingText ? (
             <article className="flex flex-col gap-1.5" aria-label="Assistant answer" aria-live="polite">
-              <Author icon={<RiSparkling2Line aria-hidden="true" />} name="Caydex" />
+              <Author icon={<RiSparkling2Line aria-hidden="true" />} name="QAYDEX" />
               {streamingText ? <ChatMarkdown content={streamingText} /> : null}
               {busy ? <StatusLine stream={stream} /> : null}
             </article>
@@ -404,7 +404,7 @@ function MessageRow({
 
   return (
     <article className="flex flex-col gap-2">
-      <Author icon={<RiSparkling2Line aria-hidden="true" />} name="Caydex" />
+      <Author icon={<RiSparkling2Line aria-hidden="true" />} name="QAYDEX" />
 
       {message.content ? <ChatMarkdown content={message.content} /> : null}
 

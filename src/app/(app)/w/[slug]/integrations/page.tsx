@@ -280,7 +280,7 @@ function ViewTabs({ slug, view }: { slug: string; view: View }) {
 
 /**
  * The catalog. Every provider is listed, including the ones we cannot connect — hiding them
- * would answer "does Caydex do Xero?" with silence instead of "not yet, here is what to do
+ * would answer "does QAYDEX do Xero?" with silence instead of "not yet, here is what to do
  * instead", which is the more useful and more honest answer.
  */
 function AvailableView({ slug, canManage }: { slug: string; canManage: boolean }) {

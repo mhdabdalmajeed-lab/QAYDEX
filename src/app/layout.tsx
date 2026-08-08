@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Caydex",
-    template: "%s · Caydex",
+    default: "QAYDEX",
+    template: "%s · QAYDEX",
   },
   description:
     "An AI audit workspace: define how audits should be run, supply any financial evidence, and get interactive, evidence-linked audits.",

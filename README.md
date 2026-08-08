@@ -1,4 +1,4 @@
-# Caydex
+# QAYDEX
 
 An AI audit workspace. Organisations define how audits should be conducted, supply whatever
 financial evidence they have, and a GPT model produces an interactive, evidence-linked audit

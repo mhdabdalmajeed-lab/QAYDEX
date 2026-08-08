@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { RiShieldCheckLine } from "@remixicon/react";
 
+import { LogoMark } from "@/components/logo";
 import { CreateWorkspaceForm } from "@/components/onboarding/create-workspace-form";
 import { listWorkspaces, requireUser } from "@/lib/auth/guards";
 
@@ -22,8 +22,8 @@ export default async function OnboardingPage() {
   return (
     <div className="flex min-h-svh flex-1 flex-col items-center justify-center gap-8 bg-muted/40 px-6 py-12">
       <div className="flex items-center gap-2">
-        <RiShieldCheckLine className="size-5 text-primary" aria-hidden="true" />
-        <span className="text-base font-semibold tracking-tight">Caydex</span>
+        <LogoMark className="size-7" label={null} />
+        <span className="text-base font-semibold tracking-wide">QAYDEX</span>
       </div>
 
       <main className="w-full max-w-xl">

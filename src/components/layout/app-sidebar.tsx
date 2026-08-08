@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { NAV_SECTIONS, type NavSection } from "@/components/layout/nav-config";
+import {
+  platformForSegment,
+  segmentBelowRoot,
+  type NavSection,
+} from "@/components/layout/nav-config";
+import { PlatformSwitcher } from "@/components/layout/platform-switcher";
 import { UserMenu } from "@/components/layout/user-menu";
 import {
   WorkspaceSwitcher,
@@ -29,7 +34,12 @@ type AppSidebarProps = {
 };
 
 /**
- * Seven destinations, flat. No nesting.
+ * One platform's destinations, flat. No nesting.
+ *
+ * The header addresses the page in two steps — which company, then which platform — and the
+ * menu below it lists only the sections of the platform the current URL belongs to. The
+ * platform is read from the path rather than held in state, so the sidebar cannot disagree
+ * with the page it is sitting next to.
  *
  * Filtering belongs on the page it filters — each section already carries its own status tabs
  * and filter bar — so the sidebar stays a map of the product rather than a copy of every view.
@@ -37,6 +47,7 @@ type AppSidebarProps = {
 export function AppSidebar({ slug, workspaces, user }: AppSidebarProps) {
   const pathname = usePathname();
   const root = `/w/${slug}`;
+  const platform = platformForSegment(segmentBelowRoot(pathname, root));
 
   const href = (to: string) => `${root}/${to}`;
 
@@ -47,13 +58,14 @@ export function AppSidebar({ slug, workspaces, user }: AppSidebarProps) {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <WorkspaceSwitcher slug={slug} workspaces={workspaces} />
+        <PlatformSwitcher root={root} current={platform} />
       </SidebarHeader>
 
       <SidebarContent>
-        <nav aria-label="Workspace">
+        <nav aria-label={platform.title}>
           <SidebarGroup>
             <SidebarMenu>
-              {NAV_SECTIONS.map((section) => {
+              {platform.sections.map((section) => {
                 const active = isActive(section);
                 const Icon = section.icon;
 

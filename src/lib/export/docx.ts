@@ -262,7 +262,7 @@ export async function renderAuditDocx(payload: ExportPayload): Promise<Buffer> {
 
   const doc = new Document({
     title: `${audit.name} — ${payload.kind.replace(/_/g, " ")}`,
-    creator: "Caydex",
+    creator: "QAYDEX",
     description: audit.objective ?? undefined,
     styles: {
       paragraphStyles: [
