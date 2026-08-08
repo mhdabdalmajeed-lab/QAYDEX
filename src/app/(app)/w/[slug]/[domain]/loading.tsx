@@ -14,8 +14,8 @@ export default function DomainLibraryLoading() {
       <div className="flex flex-1 flex-col gap-5 px-4 py-5 md:px-6">
         <div className="rounded-lg border border-border">
           <div className="flex items-center gap-4 border-b border-border px-4 py-2.5">
-            {["w-40", "w-24", "w-20", "w-16", "w-14", "w-16"].map((width) => (
-              <Skeleton key={width} className={`h-3.5 ${width}`} />
+            {["w-40", "w-24", "w-20", "w-16", "w-14", "w-16"].map((width, i) => (
+              <Skeleton key={`${width}-${i}`} className={`h-3.5 ${width}`} />
             ))}
           </div>
           {Array.from({ length: 8 }, (_, index) => (
